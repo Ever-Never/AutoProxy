@@ -73,6 +73,23 @@ public class ProxyAddress {
         if(port <= 0 || port > 65535) {
             return false;
         }
+        
+        if(type.contains("https")) {
+            type = "https";
+        }
+        else if(type.contains("http")){
+            type = "http";
+        }
+        else if(type.contains("socks4")){
+            type = "socks4";
+        }
+        else if(type.contains("socks5")){
+            type = "socks5";
+        }
+        else {
+            return false;
+        }
+        
         return true;
     }
     

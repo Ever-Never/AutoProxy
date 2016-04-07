@@ -83,6 +83,7 @@ import com.github.droidfu.http.BetterHttp;
 import com.j256.ormlite.android.apptools.OpenHelperManager;
 import com.j256.ormlite.dao.Dao;
 import com.ksmaze.android.preference.ListPreferenceMultiSelect;
+import com.mapple.ProxyAddress;
 import com.mapple.ProxyManager;
 
 import org.proxydroid.db.DNSResponse;
@@ -111,6 +112,7 @@ public class ProxyDroid extends SherlockPreferenceActivity
   private static final String TAG = "ProxyDroid";
   private static final int MSG_UPDATE_FINISHED = 0;
   private static final int MSG_NO_ROOT = 1;
+  private static final int MSG_SET_PROFILE_LIST = 2;
   final Handler handler = new Handler() {
     @Override
     public void handleMessage(Message msg) {
@@ -122,6 +124,76 @@ public class ProxyDroid extends SherlockPreferenceActivity
         case MSG_NO_ROOT:
           showAToast(getString(R.string.require_root_alert));
           break;
+          //lwz@mapple.com
+        case MSG_SET_PROFILE_LIST:
+        {
+            if (pd != null) {
+                pd.dismiss();
+                pd = null;
+            }
+            if(msg.obj == null) {
+                showAToast("请求代理地址错误！");
+            }
+            else {
+                @SuppressWarnings("unchecked")
+                List<ProxyAddress> list = (List<ProxyAddress>)(msg.obj);
+                if(list.isEmpty()) {
+                    showAToast("请求代理地址为空！");
+                }
+                else {
+                    SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(ProxyDroid.this);
+                    Editor ed = settings.edit();
+                    String[] profileValues = settings.getString("profileValues", "").split("\\|");
+                    for (int i = 0; i < profileValues.length - 1; i++) {
+                        ed.remove(profileValues[i]);
+                        ed.remove("profile" + profileValues[i]);
+                    }
+                    
+                    StringBuilder profileEntriesBuffer = new StringBuilder();
+                    StringBuilder profileValuesBuffer = new StringBuilder();
+
+                    for(int i = 0; i < list.size(); i++) {
+                        ProxyAddress pa = list.get(i);
+                        Profile p = new Profile();
+                        p.setName(pa.getLocation() + pa.getType() + "-" + pa.getLevel());
+                        p.setHost(pa.getIp());
+                        p.setPort(pa.getPort());
+                        p.setProxyType(pa.getType());
+                        p.setAutoSetProxy(true);
+                        
+                        profileEntriesBuffer.append(p.getName()).append("|");
+                        profileValuesBuffer.append(Integer.toString(i + 1)).append("|");
+                        
+                        ed.putString("profile" + Integer.toString(i + 1), p.getName());
+                        ed.putString(Integer.toString(i + 1), p.toString());
+                    }
+                    
+                    profileEntriesBuffer.append(getString(R.string.profile_new));
+                    profileValuesBuffer.append("0");
+                    
+                   
+
+                    ed.putString("profileEntries", profileEntriesBuffer.toString());
+                    ed.putString("profileValues", profileValuesBuffer.toString());
+                    
+                    
+                    if(!settings.getString("profile", "").equals("1")) {
+                        profile = "-1";
+                        ed.putString("profile", "1");
+                        ed.commit();
+                    }
+                    else {
+                        ed.commit();
+                        onProfileChange("-1");
+                        profileList.setSummary(getProfileName(profile));
+                    }
+                    
+                    loadProfileList();
+                }
+            }
+            
+        }
+            break;
       }
       super.handleMessage(msg);
     }
@@ -485,9 +557,27 @@ public class ProxyDroid extends SherlockPreferenceActivity
     SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
 
     mProfile.getProfile(settings);
-    Editor ed = settings.edit();
-    ed.putString(oldProfileName, mProfile.toString());
-    ed.commit();
+    
+    //lwz@mapple.com
+    boolean isFinded = false;
+    String[] profileValues = settings.getString("profileValues", "").split("\\|");
+    for (int i = 0; i < profileValues.length - 1; i++) {
+        if (oldProfileName.equals(profileValues[i])) {
+            Editor ed = settings.edit();
+            ed.putString(oldProfileName, mProfile.toString());
+            ed.commit();
+            isFinded = true;
+            break;
+        }
+    }
+    if(!isFinded) {
+        Log.d(TAG, "lwz delProfile " + oldProfileName);
+        Editor ed = settings.edit();
+        ed.remove(oldProfileName);
+        ed.remove("profile" + oldProfileName);
+        ed.commit();
+    }
+    
 
     String profileString = settings.getString(profile, "");
 
@@ -961,6 +1051,7 @@ public class ProxyDroid extends SherlockPreferenceActivity
     menu.add(Menu.NONE, Menu.FIRST + 5, 3, getString(R.string.use_system_iptables))
         .setIcon(android.R.drawable.ic_menu_revert)
         .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+    //lwz@mapple.com
     menu.add(Menu.NONE, Menu.FIRST + 6, 6, getString(R.string.request_address))
     .setIcon(android.R.drawable.ic_menu_info_details)
     .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_WITH_TEXT);
@@ -1027,6 +1118,7 @@ public class ProxyDroid extends SherlockPreferenceActivity
           }
         }
         return true;
+        //lwz@mapple.com
       case Menu.FIRST + 6:
           requestAddress();
           return true;
@@ -1035,16 +1127,27 @@ public class ProxyDroid extends SherlockPreferenceActivity
     return super.onOptionsItemSelected(item);
   }
   
+  //lwz@mapple.com
   private void requestAddress() {
       if(BetterHttp.getHttpClient() == null) {
           BetterHttp.setupHttpClient();
           BetterHttp.setSocketTimeout(10 * 1000);
       }
+      pd = ProgressDialog.show(this, "", getString(R.string.requesting), true, true);
+    
       Thread thread = new Thread(new Runnable() {
-          @Override
-          public void run() {
-              ProxyManager.requestMimvp();
-          }
+            @Override
+            public void run() {
+                List<ProxyAddress> list = null;
+                try {
+                    list = ProxyManager.requestMimvp();
+                }
+                finally {
+                    Message msg = Message.obtain(handler, MSG_SET_PROFILE_LIST, list);
+                    handler.sendMessage(msg);
+                }
+                
+            }
       });
       thread.start();
   }

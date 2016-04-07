@@ -75,7 +75,7 @@ public class ProxyManager {
                                 break;
                             case 3:
                             {
-                                model.setType(td.text());
+                                model.setType(td.text().toLowerCase());
                             }
                                 break;
                             case 4:
@@ -98,13 +98,91 @@ public class ProxyManager {
                         }
                         i++;
                     }
-                    Log.d(TAG, model.toString());
                     if(model.isValid()) {
                         list.add(model);
                     }
+                    Log.d(TAG, model.toString());
                 }
             }
 
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        return list;
+    }
+    
+    public static List<ProxyAddress> requestXicidaili() {
+        List<ProxyAddress> list = new ArrayList<ProxyAddress>();
+        
+        String url = "http://www.xicidaili.com/nn/";
+
+        org.jsoup.nodes.Document doc;
+        try {
+            doc = Jsoup.connect(url).get();
+            org.jsoup.select.Elements tbList = doc.getElementsByAttributeValue("id", "ip_list");
+            for(org.jsoup.nodes.Element tb : tbList) {
+                org.jsoup.select.Elements trList = tb.getElementsByTag("tr");
+                for(org.jsoup.nodes.Element tr : trList) {
+                    org.jsoup.select.Elements tdList = tr.getElementsByTag("td");
+                    if(tdList.isEmpty())
+                        continue;
+                    ProxyAddress model = new ProxyAddress();
+                    int i = 0;
+                    for (org.jsoup.nodes.Element td : tdList) {
+                        switch (i) {
+                            case 1:
+                            {
+                                model.setIp(td.text());
+                            }
+                                break;
+                            case 2:
+                            {
+                                org.jsoup.nodes.Element img = td.getElementsByTag("img").first();
+                                if (img != null) {
+                                    String src = url + "/" + img.attr("src");
+                                    BetterHttpRequest conn = BetterHttp.get(src, "192.168.9.4");
+                                    byte[] imgBytes = conn.send().getResponseBodyAsBytes();
+                                    Bitmap bitmap = BitmapFactory.decodeByteArray(imgBytes, 0,
+                                            imgBytes.length);
+                                    String port = doOcr(bitmap);
+                                    model.setPort(Integer.parseInt(port));
+                                }
+                            }
+                                break;
+                            case 3:
+                            {
+                                model.setType(td.text().toLowerCase());
+                            }
+                                break;
+                            case 4:
+                            {
+                                model.setLevel(td.text());
+                            }
+                                break;
+                            case 5:
+                            {
+                                model.setLocation(td.text());
+                            }
+                                break;
+                            case 8:
+                            {
+                                model.setTime(td.text());
+                            }
+                                break;
+                            default:
+                                break;
+                        }
+                        i++;
+                    }
+                    if(model.isValid()) {
+                        list.add(model);
+                    }
+                    Log.d(TAG, model.toString());
+                }
+            }
+            
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

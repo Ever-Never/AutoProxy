@@ -33,6 +33,7 @@
     <string name="connecting">Connecting</string>
     <string name="auto_connecting">Connecting...</string>
     <string name="loading">Loading app list...</string>
+    <string name="requesting">查询代理中...</string>
 
     <!-- settings function category -->
     <string name="function_cat">Service Controller</string>
