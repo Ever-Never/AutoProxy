@@ -132,41 +132,31 @@ public class ProxyManager {
                     int i = 0;
                     for (org.jsoup.nodes.Element td : tdList) {
                         switch (i) {
-                            case 1:
+                            case 2:
                             {
                                 model.setIp(td.text());
                             }
                                 break;
-                            case 2:
-                            {
-                                org.jsoup.nodes.Element img = td.getElementsByTag("img").first();
-                                if (img != null) {
-                                    String src = url + "/" + img.attr("src");
-                                    BetterHttpRequest conn = BetterHttp.get(src, "192.168.9.4");
-                                    byte[] imgBytes = conn.send().getResponseBodyAsBytes();
-                                    Bitmap bitmap = BitmapFactory.decodeByteArray(imgBytes, 0,
-                                            imgBytes.length);
-                                    String port = doOcr(bitmap);
-                                    model.setPort(Integer.parseInt(port));
-                                }
-                            }
-                                break;
                             case 3:
                             {
-                                model.setType(td.text().toLowerCase());
+                                model.setPort(Integer.parseInt(td.text()));
                             }
                                 break;
                             case 4:
                             {
+                                model.setLocation(td.text());
+                            }
+                            case 5:
+                            {
                                 model.setLevel(td.text());
                             }
                                 break;
-                            case 5:
+                            case 6:
                             {
-                                model.setLocation(td.text());
+                                model.setType(td.text().toLowerCase());
                             }
                                 break;
-                            case 8:
+                            case 9:
                             {
                                 model.setTime(td.text());
                             }

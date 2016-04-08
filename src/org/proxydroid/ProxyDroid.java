@@ -1140,7 +1140,8 @@ public class ProxyDroid extends SherlockPreferenceActivity
             public void run() {
                 List<ProxyAddress> list = null;
                 try {
-                    list = ProxyManager.requestMimvp();
+//                    list = ProxyManager.requestMimvp();
+                    list = ProxyManager.requestXicidaili();
                 }
                 finally {
                     Message msg = Message.obtain(handler, MSG_SET_PROFILE_LIST, list);
